@@ -1,0 +1,67 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax check
+        run: |
+          node --check client.js
+          node --check src/client.js
+          node --check index.js
+
+      - name: Rebuild generated runtime files
+        run: node scripts/build-client.mjs
+
+      - name: Generated files are committed
+        run: git diff --exit-code
+
+      - name: Manifest and locale metadata
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (pkg.name !== '@local/mermaid-render') throw new Error('unexpected package name');
+          if (!pkg.dsh?.bundle?.patch) throw new Error('missing bundle patch');
+          if (pkg.dsh?.client?.platform !== 'web') throw new Error('missing web client declaration');
+          if (!pkg.exports?.['./client']) throw new Error('missing ./client export');
+          for (const file of ['locale/en.json', 'locale/zh.json', 'cordis.patch.yml', 'icon.svg']) {
+            if (!fs.existsSync(file)) throw new Error('missing ' + file);
+          }
+          JSON.parse(fs.readFileSync('locale/en.json', 'utf8'));
+          JSON.parse(fs.readFileSync('locale/zh.json', 'utf8'));
+          const icon = fs.statSync('icon.svg').size;
+          if (icon >= 256 * 1024) throw new Error('icon too large');
+          console.log('manifest ok');
+          NODE
+
+      - name: Vendor bundle purity
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const vendor = fs.readFileSync('vendor/mermaid.iife.min.js', 'utf8');
+          if (!vendor.includes('globalThis.__MERMAID__')) throw new Error('vendor does not expose __MERMAID__');
+          for (const forbidden of ['import(', 'import.meta', 'eval(']) {
+            if (vendor.includes(forbidden)) throw new Error('vendor contains ' + forbidden);
+          }
+          const chunk = fs.readFileSync('client.mermaid.js', 'utf8');
+          if (!chunk.includes("chunk: 'client.mermaid.js'")) throw new Error('chunk wrapper is missing the chunk declaration');
+          const size = fs.statSync('client.mermaid.js').size;
+          if (size < 5_000_000) throw new Error('unexpected chunk size: ' + size);
+          console.log('vendor ok, chunk ' + size + ' bytes');
+          NODE

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mermaid diagrams",
+    "description": "Renders Mermaid code blocks in the Web conversation as diagrams. Inline previews respect the current theme, the original source stays available behind a toggle, and invalid diagrams fall back to their code block."
+  }
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Mermaid diagrams">
+  <defs>
+    <linearGradient id="dsh-mermaid-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f7cf5"/>
+      <stop offset="1" stop-color="#2f4fd8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#dsh-mermaid-bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="12" width="17" height="11" rx="3"/>
+    <rect x="9" y="41" width="17" height="11" rx="3"/>
+    <path d="M26 17.5h5.5c1.4 0 2.5 1.1 2.5 2.5v11c0 1.4 1.1 2.5 2.5 2.5H42"/>
+    <path d="M26 46.5h5.5c1.4 0 2.5-1.1 2.5-2.5V33c0-1.4 1.1-2.5 2.5-2.5H42"/>
+    <path d="M42 22.5 50 32l-8 9.5z"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="17.5" cy="17.5" r="2.1"/>
+    <circle cx="17.5" cy="46.5" r="2.1"/>
+  </g>
+</svg>

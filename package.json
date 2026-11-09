@@ -1,0 +1,47 @@
+{
+  "name": "@local/mermaid-render",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Renders Mermaid diagram code blocks in the DeepSeek Harness Web conversation as diagrams, with a source toggle and theme-aware colors.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "client.mermaid.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "mermaid",
+    "diagram",
+    "plugin",
+    "markdown"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nangongwentian-fe/dsh-mermaid-render.git"
+  },
+  "homepage": "https://github.com/nangongwentian-fe/dsh-mermaid-render#readme",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  }
+}

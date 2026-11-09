@@ -1,0 +1,15 @@
+# OS and editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Node.js (only needed for rebuilding; runtime files are committed)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Local scratch
+.scratch/
+*.local

@@ -1,0 +1,7 @@
+# The mermaid-render bundle layer. The whole feature lives in the browser half
+# (`client.js` + the lazy `client.mermaid.js` chunk, declared by `dsh.client` in
+# package.json): it enhances the code blocks the shipped Chat Markdown renderer
+# already produced, so no Host-side endpoint or service is involved.
+- insert:
+    - id: mermaid-render
+      name: '@local/mermaid-render'

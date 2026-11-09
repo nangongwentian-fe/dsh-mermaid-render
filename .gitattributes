@@ -1,0 +1,4 @@
+# Generated runtime files: keep them out of GitHub's diff/language stats.
+client.js linguist-generated=true
+client.mermaid.js linguist-generated=true
+vendor/mermaid.iife.min.js linguist-generated=true
