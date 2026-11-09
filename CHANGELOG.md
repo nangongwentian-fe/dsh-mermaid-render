@@ -22,3 +22,7 @@ First public release.
   and a source length cap.
 - Plugin Manager metadata and original icon; disabling the plugin restores the original DOM.
 - Build script, CI for build consistency and vendor purity, verification record, and third-party notices.
+
+### Documentation
+
+- README includes light- and dark-theme screenshots of the plugin in the DSH chat UI.

@@ -16,6 +16,23 @@ Markdown surface are rendered as inline SVG diagrams instead of plain code.
 - Fully offline: mermaid is bundled and fetched lazily from the plugin package; nothing is loaded
   from a CDN at render time.
 
+## Screenshot
+
+A Mermaid fence in a chat reply, rendered inline by the plugin. The shipped code-card header
+("Code block", wrap, copy) is preserved and the **Show source** toggle remains available:
+
+![Mermaid diagram rendered inline in a DSH chat reply](docs/screenshot-light.png)
+
+<details>
+<summary>Dark theme</summary>
+
+The same message after switching the host theme. Diagram colors are re-resolved from the active
+`--dsw-alias-*` tokens and the SVG is re-rendered automatically:
+
+![Mermaid diagram rendered inline in a DSH chat reply with the dark theme](docs/screenshot-dark.png)
+
+</details>
+
 ## Requirements
 
 - DSH **0.2.2-rc.1** (tested). DSH plugin APIs are in preview and may change between releases.
