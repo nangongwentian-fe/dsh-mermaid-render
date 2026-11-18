@@ -1,6 +1,6 @@
 {
   "name": "@local/mermaid-render",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Renders Mermaid diagram code blocks in the DeepSeek Harness Web conversation as diagrams, with a source toggle and theme-aware colors.",
   "license": "MIT",

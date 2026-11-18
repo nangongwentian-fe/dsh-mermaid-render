@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-18
+
+### Added
+
+- Inline toolbar under every diagram: zoom out, a percentage readout that resets to 100 % when
+  clicked, zoom in (25 %–400 % overall), a **fit width** toggle, and **fullscreen**.
+- Zoom is applied by assigning the SVG a new layout size instead of a CSS `transform`. The browser
+  therefore re-renders the vectors at the target size, so text and strokes stay sharp at every zoom
+  level; a transformed layer is rasterized once and then stretched, which is what makes scaled
+  diagrams look soft.
+- Fullscreen overlay carries its own copy of the SVG: `Esc` closes it, `⌘/Ctrl` + wheel zooms, and the
+  inline diagram is untouched while it is open (it is re-fitted when it closes).
+- Zoom and fit state survive the automatic re-render on light/dark theme changes.
+
+### Changed
+
+- The controls moved into the shipped code-card banner, immediately before its wrap/copy actions, so
+  a diagram has exactly one control row instead of a top header and a bottom bar. The group is
+  re-attached on the next scan if React replaces that row.
+- **Show source / Show diagram** is now an icon (`</>` / `▦`) instead of text, matching the icon
+  actions beside it; its hint and accessible name still follow the active locale.
+- Every control shows a hover hint. The hints are portalled to `<body>` because the card clips
+  overflow, and they replace the native `title` tooltip so a control never shows two hints.
+- The failed/oversized notice moved above the diagram, where the source fallback is shown.
+
 ## [1.0.0] - 2026-11-09
 
 First public release.

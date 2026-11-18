@@ -48,6 +48,10 @@ window.__ModuleLoader__.load({
     const SCAN_FALLBACK_MS = 4000;
     /** Refuse to lay out oversized model output (mermaid's own cap is 50k chars). */
     const MAX_RENDER_LENGTH = 50000;
+    /** Zoom limits, expressed as a multiplier of the fitted/natural size. */
+    const MIN_ZOOM = 0.25;
+    const MAX_ZOOM = 4;
+    const ZOOM_STEP = 1.25;
 
     /**
      * Diagram type keywords that may start a fence body. Kept in sync with the
@@ -77,6 +81,12 @@ window.__ModuleLoader__.load({
       'diagram.tooLarge': '图表内容过大，已显示源码。',
       'diagram.showSource': '显示源码',
       'diagram.showDiagram': '显示图表',
+      'diagram.zoomIn': '放大',
+      'diagram.zoomOut': '缩小',
+      'diagram.zoomReset': '恢复 100%',
+      'diagram.fitWidth': '适应宽度',
+      'diagram.fullscreen': '全屏',
+      'diagram.exitFullscreen': '退出全屏',
     };
 
     const en = {
@@ -86,6 +96,12 @@ window.__ModuleLoader__.load({
       'diagram.tooLarge': 'This diagram is too large to render; showing the source instead.',
       'diagram.showSource': 'Show source',
       'diagram.showDiagram': 'Show diagram',
+      'diagram.zoomIn': 'Zoom in',
+      'diagram.zoomOut': 'Zoom out',
+      'diagram.zoomReset': 'Reset to 100%',
+      'diagram.fitWidth': 'Fit width',
+      'diagram.fullscreen': 'Fullscreen',
+      'diagram.exitFullscreen': 'Exit fullscreen',
     };
 
     /**
@@ -117,56 +133,105 @@ window.__ModuleLoader__.load({
         background: transparent;
         margin: 0 auto;
       }
-      .dsh-mermaid-bar {
+      /* Controls live in the shipped code-card banner, beside its wrap/copy
+         actions, so a diagram has exactly one control row. */
+      .dsh-mermaid-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
-        min-height: 26px;
-        padding: 2px 8px 3px;
-        border-top: 1px dashed var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.2));
+        gap: 1px;
+        margin-right: 2px;
       }
-      .dsh-mermaid-badge {
-        font-size: 11px;
-        line-height: 16px;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-        color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary, #8a8f98));
-        user-select: none;
-      }
-      .dsh-mermaid-note {
-        flex: 1 1 auto;
-        min-width: 0;
-        font-size: 12px;
-        line-height: 18px;
-        color: var(--dsw-alias-label-secondary, #5c6370);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .dsh-mermaid-note[hidden] { display: none; }
-      .dsh-mermaid-error { color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary, #c0392b)); }
-      .dsh-mermaid-toggle {
+      .dsh-mermaid-actions[hidden] { display: none; }
+      .dsh-mermaid-btn {
+        position: relative;
         appearance: none;
         flex: none;
-        margin-left: auto;
-        padding: 0 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 4px;
         border: 0;
-        border-radius: var(--dsw-radius-sm, 6px);
+        border-radius: 5px;
         background: transparent;
         color: var(--dsw-alias-label-secondary, #5c6370);
         font: inherit;
         font-size: 12px;
-        line-height: 20px;
+        line-height: 1;
         cursor: pointer;
       }
-      .dsh-mermaid-toggle:hover {
+      .dsh-mermaid-btn:hover {
         background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.12));
         color: var(--dsw-alias-label-primary, #0f1115);
       }
-      .dsh-mermaid-toggle:focus-visible {
+      .dsh-mermaid-btn:focus-visible {
         outline: var(--dsh-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, #4176e6));
         outline-offset: 1px;
       }
+      .dsh-mermaid-btn[aria-pressed='true'] {
+        color: var(--dsw-alias-state-business-primary, #4176e6);
+        background: var(--dsw-alias-interactive-bg-active, rgba(65, 118, 230, 0.12));
+      }
+      .dsh-mermaid-zoom { min-width: 40px; font-variant-numeric: tabular-nums; }
+      /* Hover hints are portalled (the card clips overflow), so they are a
+         separate fixed-position pill rather than a pseudo element. */
+      .dsh-mermaid-tip {
+        position: fixed;
+        z-index: 2147483001;
+        padding: 3px 7px;
+        border-radius: 6px;
+        background: var(--dsw-alias-label-primary, #0f1115);
+        color: var(--dsw-alias-bg-layer-1, #ffffff);
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 15px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.1s ease;
+      }
+      .dsh-mermaid-tip[data-visible='true'] { opacity: 1; }
+      .dsh-mermaid-note {
+        padding: 2px 12px 6px;
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--dsw-alias-label-secondary, #5c6370);
+      }
+      .dsh-mermaid-note[hidden] { display: none; }
+      .dsh-mermaid-error { color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary, #c0392b)); }
+      .dsh-mermaid-fs {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        background: var(--dsw-alias-bg-layer-1, var(--dsw-alias-bg-layer-2, #ffffff));
+      }
+      .dsh-mermaid-fs[hidden] { display: none; }
+      .dsh-mermaid-fs-bar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.2));
+      }
+      .dsh-mermaid-fs-label {
+        font-size: 12px;
+        line-height: 18px;
+        color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary, #8a8f98));
+      }
+      .dsh-mermaid-fs-body {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .dsh-mermaid-fs-body .dsh-mermaid-svg { margin: auto; }
     `;
 
     /** A constant identity for the empty-string "stale render" marker. */
@@ -256,6 +321,7 @@ window.__ModuleLoader__.load({
       let mediaListener = null;
       let scanTimer = 0;
       let fallbackTimer = 0;
+      let resizeObserver = null;
       let nextRenderId = 0;
       let mermaidPromise = null;
       let mermaidConfigKey = '';
@@ -632,11 +698,15 @@ window.__ModuleLoader__.load({
         if (ready) record.contentElement.style.display = showSource ? '' : 'none';
         record.diagram.hidden = !ready || showSource;
         record.toggle.hidden = !ready;
+        record.actions.hidden = !ready;
         if (ready) {
-          record.toggle.textContent = showSource ? t('diagram.showDiagram') : t('diagram.showSource');
+          record.toggle.textContent = showSource ? '\u25a6' : '</>';
+          setTip(record.toggle, showSource ? t('diagram.showDiagram') : t('diagram.showSource'));
           record.toggle.setAttribute('aria-pressed', showSource ? 'true' : 'false');
         }
         record.view.hidden = false;
+        if (showSource) closeFullscreen(record);
+        else applyScale(record);
       }
 
       /** @param {object} record @returns {void} */
@@ -647,8 +717,251 @@ window.__ModuleLoader__.load({
         record.note.hidden = false;
         record.note.textContent = code === 'tooLarge' ? t('diagram.tooLarge') : t('diagram.error');
         record.toggle.hidden = true;
+        record.actions.hidden = true;
         record.view.hidden = false;
         record.contentElement.style.display = '';
+        closeFullscreen(record);
+      }
+
+      /**
+       * Measure the SVG mermaid produced and remember its intrinsic size.
+       * Zoom is applied by assigning a layout size (not a CSS transform), so the
+       * browser re-renders the vectors at the new pixel size and text stays
+       * sharp at every zoom level.
+       * @param {object} record - the block record.
+       * @param {Element} holder - the `.dsh-mermaid-svg` holder.
+       * @returns {void}
+       */
+      function adoptSvg(record, holder) {
+        const svgElement = holder.querySelector('svg');
+        if (svgElement === null) {
+          record.svgElement = null;
+          record.naturalWidth = 0;
+          record.naturalHeight = 0;
+          return;
+        }
+        const viewBox = svgElement.viewBox !== undefined && svgElement.viewBox !== null ? svgElement.viewBox.baseVal : null;
+        // A percentage width ("100%") is a responsive hint, not an intrinsic size.
+        const widthRaw = svgElement.getAttribute('width') ?? '';
+        const heightRaw = svgElement.getAttribute('height') ?? '';
+        const widthAttribute = widthRaw.includes('%') ? Number.NaN : Number.parseFloat(widthRaw);
+        const heightAttribute = heightRaw.includes('%') ? Number.NaN : Number.parseFloat(heightRaw);
+        record.naturalWidth = Number.isFinite(widthAttribute) && widthAttribute > 0
+          ? widthAttribute
+          : viewBox !== null && viewBox.width > 0 ? viewBox.width : 0;
+        record.naturalHeight = Number.isFinite(heightAttribute) && heightAttribute > 0
+          ? heightAttribute
+          : viewBox !== null && viewBox.height > 0 ? viewBox.height : 0;
+        record.svgElement = svgElement;
+        // Mermaid stamps a max-width that would fight the explicit size below.
+        svgElement.style.maxWidth = 'none';
+      }
+
+      /**
+       * Current scale: the fit-to-width base (when enabled) times the user zoom.
+       * @param {object} record - the block record.
+       * @returns {number} a positive multiplier.
+       */
+      function scaleOf(record) {
+        if (record.naturalWidth <= 0) return record.zoom;
+        const container = record.fullscreen !== null ? record.fullscreen.body : record.diagram;
+        if (record.fitWidth !== true) return record.zoom;
+        const available = Math.max((container.clientWidth || 0) - 24, 120);
+        return (available / record.naturalWidth) * record.zoom;
+      }
+
+      /**
+       * Size the inline SVG and its fullscreen twin, then refresh the readouts.
+       * @param {object} record - the block record.
+       * @returns {void}
+       */
+      function applyScale(record) {
+        const scale = scaleOf(record);
+        const targets = [record.svgElement, record.fullscreen === null ? null : record.fullscreen.svgElement];
+        for (const element of targets) {
+          if (element === null || element === undefined) continue;
+          if (record.naturalWidth > 0) element.style.width = `${Math.max(1, Math.round(record.naturalWidth * scale))}px`;
+          if (record.naturalHeight > 0) element.style.height = `${Math.max(1, Math.round(record.naturalHeight * scale))}px`;
+        }
+        const text = `${Math.round(scale * 100)}%`;
+        for (const label of record.zoomLabels) {
+          label.textContent = text;
+        }
+        for (const button of record.fitButtons) {
+          button.setAttribute('aria-pressed', record.fitWidth === true ? 'true' : 'false');
+        }
+      }
+
+      /**
+       * @param {object} record - the block record.
+       * @param {number} zoom - the new multiplier, clamped to the supported range.
+       * @returns {void}
+       */
+      function setZoom(record, zoom) {
+        record.zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
+        applyScale(record);
+      }
+
+      /**
+       * @param {object} record - the block record.
+       * @returns {void}
+       */
+      function toggleFit(record) {
+        record.fitWidth = record.fitWidth !== true;
+        applyScale(record);
+      }
+
+      /** The portalled hover-hint pill, created on first use. */
+      let tipElement = null;
+
+      /**
+       * @param {HTMLButtonElement} button - a toolbar button.
+       * @param {string} label - visible hint and accessible name.
+       * @returns {void}
+       */
+      function setTip(button, label) {
+        button.setAttribute('aria-label', label);
+        button.dataset.tip = label;
+      }
+
+      /**
+       * Show the hover hint above one control. Portalled to `<body>` because the
+       * card clips its own overflow.
+       * @param {Element} anchor - the hovered control.
+       * @returns {void}
+       */
+      function showTip(anchor) {
+        const text = anchor.getAttribute('data-tip');
+        if (text === null || text === '' || document.body === null) return;
+        if (tipElement === null) {
+          tipElement = document.createElement('div');
+          tipElement.className = 'dsh-mermaid-tip';
+          document.body.appendChild(tipElement);
+        }
+        tipElement.textContent = text;
+        tipElement.dataset.visible = 'true';
+        const rect = anchor.getBoundingClientRect();
+        const tipRect = tipElement.getBoundingClientRect();
+        const left = Math.min(
+          Math.max(rect.left + rect.width / 2 - tipRect.width / 2, 8),
+          Math.max(window.innerWidth - tipRect.width - 8, 8),
+        );
+        const top = Math.max(rect.top - tipRect.height - 7, 8);
+        tipElement.style.left = `${Math.round(left)}px`;
+        tipElement.style.top = `${Math.round(top)}px`;
+      }
+
+      /** @returns {void} */
+      function hideTip() {
+        if (tipElement !== null) tipElement.dataset.visible = 'false';
+      }
+
+      /**
+       * @param {string} glyph - the visible label.
+       * @param {string} label - the hint and accessible name.
+       * @returns {HTMLButtonElement} a toolbar button.
+       */
+      function actionButton(glyph, label) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dsh-mermaid-btn';
+        button.textContent = glyph;
+        setTip(button, label);
+        button.addEventListener('pointerenter', () => showTip(button));
+        button.addEventListener('pointerleave', hideTip);
+        button.addEventListener('focus', () => showTip(button));
+        button.addEventListener('blur', hideTip);
+        return button;
+      }
+
+      /**
+       * Open the diagram in a full-viewport overlay. The overlay carries its own
+       * SVG copy so closing it never disturbs the inline view.
+       * @param {object} record - the block record.
+       * @returns {void}
+       */
+      function openFullscreen(record) {
+        if (record.fullscreen !== null || record.svgElement === null || document.body === null) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'dsh-mermaid-fs';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        const bar = document.createElement('div');
+        bar.className = 'dsh-mermaid-fs-bar';
+        const badge = document.createElement('span');
+        badge.className = 'dsh-mermaid-fs-label';
+        badge.textContent = t('diagram.label');
+        const spacer = document.createElement('span');
+        spacer.style.flex = '1 1 auto';
+        const actions = document.createElement('div');
+        actions.className = 'dsh-mermaid-actions';
+        const zoomOut = actionButton('\u2212', t('diagram.zoomOut'));
+        const zoomLabel = actionButton('100%', t('diagram.zoomReset'));
+        zoomLabel.classList.add('dsh-mermaid-zoom');
+        const zoomIn = actionButton('+', t('diagram.zoomIn'));
+        const fitButton = actionButton('\u2194', t('diagram.fitWidth'));
+        const closeButton = actionButton('\u2715', t('diagram.exitFullscreen'));
+        actions.append(zoomOut, zoomLabel, zoomIn, fitButton, closeButton);
+        bar.append(badge, spacer, actions);
+        const body = document.createElement('div');
+        body.className = 'dsh-mermaid-fs-body';
+        const holder = document.createElement('div');
+        holder.className = 'dsh-mermaid-svg';
+        if (record.holder !== null) holder.innerHTML = record.holder.innerHTML;
+        body.appendChild(holder);
+        overlay.append(bar, body);
+
+        const onKey = (event) => {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          closeFullscreen(record);
+        };
+        const onWheel = (event) => {
+          if (!event.ctrlKey && !event.metaKey) return;
+          event.preventDefault();
+          setZoom(record, record.zoom * (event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP));
+        };
+
+        record.fullscreen = {
+          overlay,
+          body,
+          holder,
+          svgElement: holder.querySelector('svg'),
+          zoomLabel,
+          fitButton,
+          onKey,
+          onWheel,
+        };
+        if (record.fullscreen.svgElement !== null) record.fullscreen.svgElement.style.maxWidth = 'none';
+        record.zoomLabels.push(zoomLabel);
+        record.fitButtons.push(fitButton);
+        zoomOut.addEventListener('click', () => setZoom(record, record.zoom / ZOOM_STEP));
+        zoomIn.addEventListener('click', () => setZoom(record, record.zoom * ZOOM_STEP));
+        zoomLabel.addEventListener('click', () => setZoom(record, 1));
+        fitButton.addEventListener('click', () => toggleFit(record));
+        closeButton.addEventListener('click', () => closeFullscreen(record));
+        document.addEventListener('keydown', onKey, true);
+        body.addEventListener('wheel', onWheel, { passive: false });
+        document.body.appendChild(overlay);
+        applyScale(record);
+        closeButton.focus();
+      }
+
+      /**
+       * @param {object} record - the block record.
+       * @returns {void}
+       */
+      function closeFullscreen(record) {
+        const fullscreen = record.fullscreen;
+        if (fullscreen === null) return;
+        record.fullscreen = null;
+        document.removeEventListener('keydown', fullscreen.onKey, true);
+        fullscreen.body.removeEventListener('wheel', fullscreen.onWheel);
+        fullscreen.overlay.remove();
+        record.zoomLabels = record.zoomLabels.filter((label) => label !== fullscreen.zoomLabel);
+        record.fitButtons = record.fitButtons.filter((button) => button !== fullscreen.fitButton);
+        applyScale(record);
       }
 
       /** @param {object} record @param {string} svg @returns {void} */
@@ -663,6 +976,14 @@ window.__ModuleLoader__.load({
         // Mermaid with securityLevel "strict" sanitizes labels and builds a
         // static SVG; assigning its serialized output is the documented path.
         holder.innerHTML = svg;
+        record.holder = holder;
+        adoptSvg(record, holder);
+        if (record.fullscreen !== null) {
+          record.fullscreen.holder.innerHTML = svg;
+          record.fullscreen.svgElement = record.fullscreen.holder.querySelector('svg');
+          if (record.fullscreen.svgElement !== null) record.fullscreen.svgElement.style.maxWidth = 'none';
+        }
+        applyScale(record);
       }
 
       /**
@@ -682,6 +1003,10 @@ window.__ModuleLoader__.load({
           record.view.hidden = true;
           record.note.hidden = true;
           record.toggle.hidden = true;
+          record.actions.hidden = true;
+          record.holder = null;
+          record.svgElement = null;
+          closeFullscreen(record);
           record.contentElement.style.display = '';
           return;
         }
@@ -765,6 +1090,24 @@ window.__ModuleLoader__.load({
       }
 
       /**
+       * Place the control group in the shipped code-card banner, ahead of its
+       * wrap/copy actions, so a diagram has exactly one control row. React owns
+       * that row, so a scan re-attaches the group whenever it was replaced.
+       * @param {object} record - the block record.
+       * @returns {void}
+       */
+      function attachToolbar(record) {
+        const banner = record.block.querySelector('[data-code-block-banner]');
+        const host = banner === null ? null : banner.lastElementChild;
+        if (host !== null) {
+          if (record.actions.parentNode !== host) host.insertBefore(record.actions, host.firstChild);
+          return;
+        }
+        // No banner (unexpected markup): keep the controls above the diagram.
+        if (record.actions.parentNode !== record.view) record.view.insertBefore(record.actions, record.diagram);
+      }
+
+      /**
        * Create and attach the plugin-owned view for one code block.
        * @param {Element} block - the `.md-code-block` element.
        * @param {Element} contentElement - its `[data-code-block-content]`.
@@ -782,22 +1125,27 @@ window.__ModuleLoader__.load({
         diagram.className = 'dsh-mermaid-diagram';
         diagram.hidden = true;
 
-        const bar = document.createElement('div');
-        bar.className = 'dsh-mermaid-bar';
-        const badge = document.createElement('span');
-        badge.className = 'dsh-mermaid-badge';
-        badge.textContent = 'Mermaid';
         const note = document.createElement('span');
         note.className = 'dsh-mermaid-note dsh-mermaid-error';
         note.setAttribute('role', 'alert');
         note.hidden = true;
-        const toggle = document.createElement('button');
-        toggle.type = 'button';
-        toggle.className = 'dsh-mermaid-toggle';
+
+        const toggle = actionButton('</>', t('diagram.showSource'));
+        toggle.classList.add('dsh-mermaid-toggle');
         toggle.setAttribute('aria-pressed', 'false');
-        toggle.textContent = t('diagram.showSource');
-        bar.append(badge, note, toggle);
-        view.append(diagram, bar);
+
+        const actions = document.createElement('div');
+        actions.className = 'dsh-mermaid-actions';
+        actions.hidden = true;
+        const zoomOut = actionButton('\u2212', t('diagram.zoomOut'));
+        const zoomLabel = actionButton('100%', t('diagram.zoomReset'));
+        zoomLabel.classList.add('dsh-mermaid-zoom');
+        const zoomIn = actionButton('+', t('diagram.zoomIn'));
+        const fitButton = actionButton('\u2194', t('diagram.fitWidth'));
+        const fullscreenButton = actionButton('\u26f6', t('diagram.fullscreen'));
+        actions.append(zoomOut, zoomLabel, zoomIn, fitButton, fullscreenButton, toggle);
+
+        view.append(note, diagram);
         block.setAttribute(HOST_ATTRIBUTE, '');
         block.appendChild(view);
 
@@ -809,6 +1157,16 @@ window.__ModuleLoader__.load({
           diagram,
           note,
           toggle,
+          actions,
+          zoomLabels: [zoomLabel],
+          fitButtons: [fitButton],
+          holder: null,
+          svgElement: null,
+          naturalWidth: 0,
+          naturalHeight: 0,
+          zoom: 1,
+          fitWidth: false,
+          fullscreen: null,
           source: sourceOf(contentElement),
           pendingSource: false,
           state: 'idle',
@@ -823,6 +1181,13 @@ window.__ModuleLoader__.load({
           record.showSource = record.showSource !== true;
           syncToggle(record);
         });
+        zoomOut.addEventListener('click', () => setZoom(record, record.zoom / ZOOM_STEP));
+        zoomIn.addEventListener('click', () => setZoom(record, record.zoom * ZOOM_STEP));
+        zoomLabel.addEventListener('click', () => setZoom(record, 1));
+        fitButton.addEventListener('click', () => toggleFit(record));
+        fullscreenButton.addEventListener('click', () => openFullscreen(record));
+        if (resizeObserver !== null) resizeObserver.observe(diagram);
+        attachToolbar(record);
         return record;
       }
 
@@ -833,7 +1198,16 @@ window.__ModuleLoader__.load({
           record.timer = 0;
         }
         record.generation += 1;
+        closeFullscreen(record);
+        if (resizeObserver !== null) {
+          try {
+            resizeObserver.unobserve(record.diagram);
+          } catch {
+            /* already gone */
+          }
+        }
         if (record.view.parentNode !== null) record.view.remove();
+        if (record.actions.parentNode !== null) record.actions.remove();
         if (record.block.isConnected) {
           record.block.removeAttribute(HOST_ATTRIBUTE);
           try {
@@ -861,6 +1235,7 @@ window.__ModuleLoader__.load({
           if (existing !== undefined) {
             if (!block.isConnected) continue;
             seen.add(block);
+            attachToolbar(existing);
             if (!dirtyBlocks.has(block)) continue;
             const contentElement = block.querySelector('[data-code-block-content]');
             if (contentElement === null) continue;
@@ -942,11 +1317,22 @@ window.__ModuleLoader__.load({
         styleElement.textContent = CSS;
         document.head.appendChild(styleElement);
 
+        if (typeof ResizeObserver === 'function') {
+          resizeObserver = new ResizeObserver(() => {
+            if (disposed) return;
+            for (const record of records.values()) {
+              if (record.state === 'ready' && record.fitWidth === true) applyScale(record);
+            }
+            const fullscreen = [...records.values()].find((record) => record.fullscreen !== null);
+            if (fullscreen !== undefined) applyScale(fullscreen);
+          });
+        }
+
         scanObserver = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
             const target = mutation.target;
             const element = target instanceof Element ? target : target.parentElement;
-            if (element !== null && element.closest(`[${VIEW_ATTRIBUTE}]`) !== null) continue;
+            if (element !== null && (element.closest(`[${VIEW_ATTRIBUTE}]`) !== null || element.closest('.dsh-mermaid-fs') !== null)) continue;
             if (mutation.type === 'attributes' && mutation.attributeName === 'data-ds-dark-theme' && target === document.body) themeDirty = true;
             if (mutation.type === 'childList') {
               for (const node of mutation.addedNodes) markBlockDirty(node);
@@ -983,6 +1369,7 @@ window.__ModuleLoader__.load({
         }
         themeSignature = paletteSignature();
         themeDirty = false;
+        window.addEventListener('scroll', hideTip, true);
         const localeDispose = typeof ctx.locale.subscribe === 'function'
           ? ctx.locale.subscribe(() => {
             translate = ctx.locale.bind(NS);
@@ -1004,6 +1391,7 @@ window.__ModuleLoader__.load({
         scan();
         return () => {
           if (typeof localeDispose === 'function') localeDispose();
+          window.removeEventListener('scroll', hideTip, true);
           fallbackTimer = window.clearInterval(fallbackTimer);
           if (mediaQuery !== null && mediaListener !== null) {
             if (typeof mediaQuery.removeEventListener === 'function') mediaQuery.removeEventListener('change', mediaListener);
@@ -1013,6 +1401,10 @@ window.__ModuleLoader__.load({
           mediaListener = null;
           if (scanObserver !== null) scanObserver.disconnect();
           scanObserver = null;
+          if (resizeObserver !== null) {
+            resizeObserver.disconnect();
+            resizeObserver = null;
+          }
           if (documentObserver !== null) documentObserver.disconnect();
           documentObserver = null;
           if (scanTimer !== 0) {
@@ -1023,6 +1415,8 @@ window.__ModuleLoader__.load({
           records.clear();
           if (styleElement !== null && styleElement.parentNode !== null) styleElement.remove();
           styleElement = null;
+          if (tipElement !== null && tipElement.parentNode !== null) tipElement.remove();
+          tipElement = null;
         };
       }
 

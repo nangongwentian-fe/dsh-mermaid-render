@@ -8,6 +8,11 @@ Markdown surface are rendered as inline SVG diagrams instead of plain code.
 
 - Diagrams replace the code block visually; the original source stays available behind a
   **Show source / Show diagram** toggle, and the shipped header (language label, wrap, copy) is kept.
+- **Crisp zoom and fullscreen.** Zoom (25 %–400 %) resizes the SVG's layout box instead of applying a
+  CSS transform, so the browser re-renders the vectors at the target size and text stays sharp at
+  every level. The controls sit in the code card's own header row, next to wrap/copy: zoom out, the
+  percentage (click to reset), zoom in, **fit width**, **fullscreen** (close with `Esc`; `⌘/Ctrl` +
+  wheel zooms inside it), then the source/diagram toggle. Every control has a hover hint.
 - Colors come from the active DSH theme (`--dsw-alias-*` tokens); every diagram re-renders on
   light/dark changes.
 - Invalid or oversized diagrams fall back to the untouched code block with a localized inline note.
@@ -122,8 +127,11 @@ source keeps the authored text unchanged. See `docs/verification.md` for the ver
   12.3.0 build.
 - **In-diagram configuration is ignored**: `%%{init}%%` directives and YAML front matter are stripped
   for security, so diagrams always use the host palette and default layout options.
-- **Natural size**: diagrams render at their intrinsic size and scroll horizontally when wider than
-  the message; there is no zoom/pan or full-screen view yet.
+- **Natural size by default**: diagrams render at their intrinsic size and scroll horizontally when
+  wider than the message. **Fit width** narrows the whole diagram into the message column, and zoom
+  goes up to 400 %; both keep the SVG vector-rendered, so they never soften or blur it.
+- **Zoom re-lays-out instead of transforming**: very large diagrams (400 % of a wide graph) cost a
+  real layout pass, so the first step after a big zoom can feel slower than a transform-based viewer.
 - **DOM contract**: the enhancer targets the shipped code-block DOM. If a future DSH release changes
   those selectors, the plugin degrades to plain code blocks rather than breaking the page.
 - **Residual module state**: disabling the plugin removes its DOM, styles, observers and listeners,
@@ -190,6 +198,10 @@ GPL-3.0-or-later). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 DeepSeek Harness Web 界面的 Mermaid 图表渲染插件：聊天回复、计划/文档等所有 Markdown 代码块中的
 ` ```mermaid ` 会被渲染成图表，保留源码切换、跟随浅色/深色主题，无效图表回退为代码块。mermaid
-12.3.0 以懒加载分块随插件本地打包，渲染时不联网。安装：克隆本仓库后，在 DSH 的 **Plugins →
+12.3.0 以懒加载分块随插件本地打包，渲染时不联网。
+
+图表默认按自然尺寸显示，控件放在代码卡片自己的标题行里（紧挨换行/复制）：**缩放（25 %–400 %）**、**适应宽度**、**全屏**（`Esc` 退出，全屏内 `⌘/Ctrl` + 滚轮缩放）和源码切换，每个控件都有悬停说明。
+缩放是改 SVG 的布局尺寸而不是套 CSS `transform`，所以浏览器会按目标尺寸重新渲染矢量，放大到
+400 % 文字依然锐利，不会像缩放位图那样发虚。安装：克隆本仓库后，在 DSH 的 **Plugins →
 Add plugin** 中填入该目录的绝对路径（或让 DSH Agent 用 `plugin_manager install_bundle` 安装），
 随后在 **Settings → Plugins** 中确认 "Mermaid diagrams" 已启用。插件代码采用 MIT 许可。
